@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AR Menu - Pizza</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+    <style>
+      body, html { margin: 0; overflow: hidden; }
+    </style>
+  </head>
+
+  <body>
+    <a-scene embedded arjs>
+      <!-- Marker for triggering the AR model -->
+      <a-marker type="pattern" url="assets/marker.patt">
+        <a-entity
+          gltf-model="assets/pizza.glb"
+          scale="0.5 0.5 0.5"
+          position="0 0 0"
+          rotation="0 0 0"
+        ></a-entity>
+      </a-marker>
+
+      <!-- Camera for AR -->
+      <a-entity camera></a-entity>
+    </a-scene>
+  </body>
+</html>
