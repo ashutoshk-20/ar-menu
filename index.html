@@ -1,33 +1,71 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <title>AR Menu - Pizza</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
     <style>
-      body, html { margin: 0; overflow: hidden; }
+        body,
+        html {
+            margin: 0;
+            overflow: hidden;
+        }
     </style>
-  </head>
+</head>
 
-  <body>
+<body>
     <a-scene embedded arjs>
-      <!-- Marker for triggering the AR model -->
+        <!-- Marker for triggering the AR model -->
         <a-assets>
             <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
+            <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
         </a-assets>
 
+        <!-- ...existing code... -->
         <a-marker type="pattern" url="assets/marker.patt">
-            <a-entity 
-            gltf-model="#pizzaModel"
-            scale="0.5 0.5 0.5"
-            position="0 0 0"
-            rotation="0 0 0"
-            ></a-entity>
+            <!-- Pizza Model (visible by default) -->
+            <a-entity id="pizzaEntity" gltf-model="#pizzaModel" scale="0.5 0.5 0.5" position="0 0 0" rotation="0 0 0"
+                visible="true"></a-entity>
+            <!-- Burger Model (hidden by default) -->
+            <a-entity id="burgerEntity" gltf-model="#burgerModel" scale="0.5 0.5 0.5" position="0 0 0" rotation="0 0 0"
+                visible="false"></a-entity>
+            <!-- Next Arrow Button -->
+            <a-entity id="nextArrow" geometry="primitive: plane; height: 0.2; width: 0.2" material="color: yellow"
+                position="0.6 0.2 0" rotation="-90 0 0" text="value: ➡; align: center; color: black"
+                class="clickable"></a-entity>
+            <!-- Previous Arrow Button -->
+            <a-entity id="prevArrow" geometry="primitive: plane; height: 0.2; width: 0.2" material="color: yellow"
+                position="-0.6 0.2 0" rotation="-90 0 0" text="value: ⬅; align: center; color: black"
+                class="clickable"></a-entity>
         </a-marker>
-
-
-      <!-- Camera for AR -->
-      <a-entity camera></a-entity>
     </a-scene>
-  </body>
+    <script>
+        // Simple model list and index
+        const models = [
+            { id: 'pizzaEntity' },
+            { id: 'burgerEntity' }
+        ];
+        let currentIndex = 0;
+
+        function showModel(index) {
+            models.forEach((model, i) => {
+                document.getElementById(model.id).setAttribute('visible', i === index);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('nextArrow').addEventListener('click', () => {
+                currentIndex = (currentIndex + 1) % models.length;
+                showModel(currentIndex);
+            });
+            document.getElementById('prevArrow').addEventListener('click', () => {
+                currentIndex = (currentIndex - 1 + models.length) % models.length;
+                showModel(currentIndex);
+            });
+        });
+    </script>
+
+</body>
+
 </html>
