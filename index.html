@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>AR Menu - Restaurant</title>
-  <!-- A-Frame + AR.js -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
   <style>
@@ -20,83 +19,63 @@
     raycaster="objects: .clickable"
     cursor="rayOrigin: mouse"
   >
-    <!-- Load 3D Models -->
+    <!-- Load 3D models -->
     <a-assets>
       <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
       <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
     </a-assets>
 
-    <!-- Marker Detection -->
+    <!-- Marker -->
     <a-marker type="pattern" url="assets/marker.patt">
-      <!-- Pizza Model (default) -->
-      <a-entity
-        id="pizzaEntity"
-        gltf-model="#pizzaModel"
-        scale="0.5 0.5 0.5"
-        position="0 0 0"
-        rotation="0 0 0"
-        visible="true"
-      ></a-entity>
+      <!-- Models -->
+      <a-entity id="pizzaEntity" gltf-model="#pizzaModel" scale="0.5 0.5 0.5" position="0 0 0" visible="true"></a-entity>
+      <a-entity id="burgerEntity" gltf-model="#burgerModel" scale="0.5 0.5 0.5" position="0 0 0" visible="false"></a-entity>
 
-      <!-- Burger Model (hidden) -->
-      <a-entity
-        id="burgerEntity"
-        gltf-model="#burgerModel"
-        scale="0.5 0.5 0.5"
-        position="0 0 0"
-        rotation="0 0 0"
-        visible="false"
-      ></a-entity>
+      <!-- Arrow Buttons -->
+      <a-plane id="nextArrow"
+               position="0.6 0.2 0"
+               rotation="-90 0 0"
+               width="0.3" height="0.3"
+               color="yellow"
+               text="value: ➡; align: center; color: black"
+               class="clickable">
+      </a-plane>
 
-      <!-- Next Button -->
-      <a-entity
-        id="nextArrow"
-        geometry="primitive: plane; height: 0.2; width: 0.2"
-        material="color: yellow"
-        position="0.6 0.2 0"
-        rotation="-90 0 0"
-        text="value: ➡; align: center; color: black"
-        class="clickable"
-      ></a-entity>
-
-      <!-- Previous Button -->
-      <a-entity
-        id="prevArrow"
-        geometry="primitive: plane; height: 0.2; width: 0.2"
-        material="color: yellow"
-        position="-0.6 0.2 0"
-        rotation="-90 0 0"
-        text="value: ⬅; align: center; color: black"
-        class="clickable"
-      ></a-entity>
+      <a-plane id="prevArrow"
+               position="-0.6 0.2 0"
+               rotation="-90 0 0"
+               width="0.3" height="0.3"
+               color="yellow"
+               text="value: ⬅; align: center; color: black"
+               class="clickable">
+      </a-plane>
     </a-marker>
 
-    <!-- Required Camera and Cursor -->
+    <!-- Required camera for interaction -->
     <a-entity camera></a-entity>
   </a-scene>
 
-  <!-- JavaScript Logic -->
+  <!-- Switching Logic -->
   <script>
-    const models = [
-      { id: 'pizzaEntity' },
-      { id: 'burgerEntity' }
-    ];
+    const models = ['pizzaEntity', 'burgerEntity'];
     let currentIndex = 0;
 
     function showModel(index) {
-      models.forEach((model, i) => {
-        const el = document.getElementById(model.id);
-        el.setAttribute('visible', i === index);
+      models.forEach((id, i) => {
+        document.getElementById(id).setAttribute('visible', i === index);
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('nextArrow').addEventListener('click', () => {
+    window.addEventListener('DOMContentLoaded', () => {
+      const next = document.getElementById('nextArrow');
+      const prev = document.getElementById('prevArrow');
+
+      next.addEventListener('click', () => {
         currentIndex = (currentIndex + 1) % models.length;
         showModel(currentIndex);
       });
 
-      document.getElementById('prevArrow').addEventListener('click', () => {
+      prev.addEventListener('click', () => {
         currentIndex = (currentIndex - 1 + models.length) % models.length;
         showModel(currentIndex);
       });
