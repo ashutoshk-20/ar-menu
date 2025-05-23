@@ -12,14 +12,19 @@
   <body>
     <a-scene embedded arjs>
       <!-- Marker for triggering the AR model -->
-      <a-marker type="pattern" url="assets/marker.patt">
-        <a-entity
-          gltf-model="assets/pizza.glb"
-          scale="0.5 0.5 0.5"
-          position="0 0 0"
-          rotation="0 0 0"
-        ></a-entity>
-      </a-marker>
+        <a-assets>
+            <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
+        </a-assets>
+
+        <a-marker type="pattern" url="assets/marker.patt">
+            <a-entity 
+            gltf-model="#pizzaModel"
+            scale="0.5 0.5 0.5"
+            position="0 0 0"
+            rotation="0 0 0"
+            ></a-entity>
+        </a-marker>
+
 
       <!-- Camera for AR -->
       <a-entity camera></a-entity>
