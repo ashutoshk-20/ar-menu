@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AR Carousel with Debugging & UI Buttons</title>
+  <title>AR Carousel with Dynamic Description & Controls</title>
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
   <style>
     body, html {
       margin: 0;
       overflow: hidden;
+      font-family: Arial, sans-serif;
     }
 
-    /* Debug Panel */
     #debugPanel {
       position: fixed;
-      bottom: 0;
+      bottom: 120px;
       left: 0;
       width: 100%;
       max-height: 120px;
@@ -28,7 +28,6 @@
       z-index: 999;
     }
 
-    /* HTML Buttons */
     .ui-button {
       position: fixed;
       top: 50%;
@@ -41,83 +40,71 @@
       cursor: pointer;
       z-index: 1000;
       opacity: 0.9;
+      user-select: none;
     }
 
     #prevBtn { left: 10px; }
     #nextBtn { right: 10px; }
+
+    #infoPanel {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 152, 0, 0.9);
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-size: 18px;
+      color: #111;
+      max-width: 300px;
+      text-align: center;
+      z-index: 1000;
+      user-select: none;
+      pointer-events: none;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <!-- UI Buttons -->
   <button id="prevBtn" class="ui-button">⬅</button>
   <button id="nextBtn" class="ui-button">➡</button>
 
-  <!-- Debug Panel -->
+  <div id="infoPanel"></div>
   <div id="debugPanel">Debug log:</div>
 
-  <!-- A-Frame Scene -->
-  <a-scene embedded arjs>
-    <!-- Assets -->
+  <a-scene embedded arjs renderer="colorManagement: true; physicallyCorrectLights: true;">
     <a-assets>
       <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
       <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
     </a-assets>
 
-    <!-- Marker -->
     <a-marker type="pattern" url="assets/marker.patt" id="carouselMarker">
-      <!-- Pizza -->
-      <a-entity id="pizzaEntity" visible="true">
-        <a-entity 
-          gltf-model="#pizzaModel" 
-          scale="0.5 0.5 0.5" 
-          position="0 0 0.1">
-        </a-entity>
-
-        <!-- Description text -->
-        <a-text 
-          value="Pepperoni Pizza\n$12.99" 
-          color="orange" 
-          align="center" 
-          position="0 0.8 0" 
-          width="2"
-          wrap-count="20">
-        </a-text>
-      </a-entity>
-
-      <!-- Burger -->
-      <a-entity id="burgerEntity" visible="false">
-        <a-entity 
-          gltf-model="#burgerModel" 
-          scale="0.5 0.5 0.5" 
-          position="0 0 0.1">
-        </a-entity>
-
-        <!-- Description text -->
-        <a-text 
-          value="Chicken Burger\n$9.99" 
-          color="yellow" 
-          align="center" 
-          position="0 0.8 0" 
-          width="2"
-          wrap-count="20">
-        </a-text>
-      </a-entity>
+      <a-entity id="pizzaEntity" gltf-model="#pizzaModel" scale="0.35 0.35 0.35" position="0 0 0.1" visible="true"></a-entity>
+      <a-entity id="burgerEntity" gltf-model="#burgerModel" scale="0.35 0.35 0.35" position="0 0 0.1" visible="false"></a-entity>
     </a-marker>
 
-    <!-- Camera -->
     <a-entity camera></a-entity>
   </a-scene>
 
-  <!-- JavaScript -->
   <script>
     const modelIds = ['pizzaEntity', 'burgerEntity'];
+    const descriptions = [
+      { title: "Pepperoni Pizza", price: "$12.99", details: "Classic pepperoni with mozzarella cheese and tomato sauce." },
+      { title: "Chicken Burger", price: "$9.99", details: "Juicy grilled chicken patty with fresh lettuce and mayo." }
+    ];
+
     let currentIndex = 0;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let flipState = false; // To track flip for each model (could be expanded)
 
     const debug = (msg) => {
       const panel = document.getElementById('debugPanel');
       const timestamp = new Date().toLocaleTimeString();
       panel.innerHTML += `<br><strong>[${timestamp}]</strong> ${msg}`;
       panel.scrollTop = panel.scrollHeight;
+      console.log(msg);
     };
 
     function showModel(index) {
@@ -125,7 +112,14 @@
         const el = document.getElementById(id);
         if (el) el.setAttribute('visible', i === index);
       });
+      updateInfoPanel(index);
       debug(`Model changed to index ${index} (${modelIds[index]})`);
+    }
+
+    function updateInfoPanel(index) {
+      const info = descriptions[index];
+      const panel = document.getElementById('infoPanel');
+      panel.innerHTML = `<strong>${info.title}</strong><br>${info.details}<br><em>Price: ${info.price}</em>`;
     }
 
     function bindHtmlButtons() {
@@ -134,14 +128,87 @@
 
       next.addEventListener('click', () => {
         currentIndex = (currentIndex + 1) % modelIds.length;
+        resetModelTransform();
         showModel(currentIndex);
         debug('Next button clicked');
       });
 
       prev.addEventListener('click', () => {
         currentIndex = (currentIndex - 1 + modelIds.length) % modelIds.length;
+        resetModelTransform();
         showModel(currentIndex);
         debug('Previous button clicked');
+      });
+    }
+
+    // Reset rotation, scale, flip on model switch
+    function resetModelTransform() {
+      const model = document.getElementById(modelIds[currentIndex]);
+      if (model) {
+        model.setAttribute('rotation', {x:0, y:0, z:0});
+        model.setAttribute('scale', {x:0.35, y:0.35, z:0.35});
+        flipState = false;
+      }
+    }
+
+    function addModelInteraction() {
+      const scene = document.querySelector('a-scene');
+      let model = document.getElementById(modelIds[currentIndex]);
+
+      let rotationY = 0;
+      let scale = 0.35;
+
+      function updateModelRef() {
+        model = document.getElementById(modelIds[currentIndex]);
+        rotationY = model.getAttribute('rotation').y || 0;
+        scale = model.getAttribute('scale').x || 0.35;
+      }
+
+      // Pointer down: start drag
+      scene.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        updateModelRef();
+      });
+
+      // Pointer move: rotate/zoom
+      scene.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        if (!model) return;
+
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+
+        // Horizontal drag = rotate Y axis
+        rotationY += dx * 0.5; // sensitivity
+        model.setAttribute('rotation', {x:0, y:rotationY, z:0});
+
+        // Vertical drag = zoom (scale)
+        scale += dy * -0.005;
+        scale = Math.min(Math.max(0.1, scale), 2); // clamp scale between 0.1 and 2
+        model.setAttribute('scale', {x: scale, y: scale, z: scale});
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+
+      // Pointer up: stop drag
+      scene.addEventListener('pointerup', (e) => {
+        isDragging = false;
+      });
+
+      // Double click to flip model 180 degrees on Y axis
+      scene.addEventListener('dblclick', (e) => {
+        model = document.getElementById(modelIds[currentIndex]);
+        if (!model) return;
+
+        rotationY = model.getAttribute('rotation').y || 0;
+        flipState = !flipState;
+        rotationY += 180; // flip by 180deg
+
+        model.setAttribute('rotation', {x: 0, y: rotationY, z: 0});
+        debug(`Model flipped ${flipState ? 'ON' : 'OFF'}`);
       });
     }
 
@@ -149,10 +216,22 @@
       bindHtmlButtons();
 
       const marker = document.getElementById('carouselMarker');
+      const infoPanel = document.getElementById('infoPanel');
+
       if (marker) {
-        marker.addEventListener('markerFound', () => debug('Marker FOUND'));
-        marker.addEventListener('markerLost', () => debug('Marker LOST'));
+        marker.addEventListener('markerFound', () => {
+          debug('Marker FOUND');
+          infoPanel.style.display = 'block';
+          showModel(currentIndex);
+        });
+
+        marker.addEventListener('markerLost', () => {
+          debug('Marker LOST');
+          infoPanel.style.display = 'none';
+        });
       }
+
+      addModelInteraction();
     });
   </script>
 </body>
