@@ -1,40 +1,159 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>AR Menu - Pizza</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
-    <style>
-      body, html { margin: 0; overflow: hidden; }
-    </style>
-  </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Carousel with Debugging & UI Buttons</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      overflow: hidden;
+    }
 
-  <body>
-    <a-scene embedded arjs>
-      <!-- Marker for triggering the AR model -->
-        <a-assets>
-            <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
-            <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
-        </a-assets>
+    /* Debug Panel */
+    #debugPanel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      max-height: 120px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      z-index: 999;
+    }
 
-        <a-marker type="pattern" url="assets/marker.patt">
-            <!-- <a-entity 
-            gltf-model="#pizzaModel"
-            scale="0.5 0.5 0.5"
-            position="0 0 0"
-            rotation="0 0 0"
-            ></a-entity> -->
-            <a-entity 
-            gltf-model="#burgerModel"
-            scale="0.5 0.5 0.5"
-            position="0 0 0"
-            rotation="0 0 0"
-            ></a-entity>
-        </a-marker>
+    /* HTML Buttons */
+    .ui-button {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 15px 20px;
+      font-size: 24px;
+      color: white;
+      background-color: #ff9800;
+      border: none;
+      cursor: pointer;
+      z-index: 1000;
+      opacity: 0.9;
+    }
 
+    #prevBtn { left: 10px; }
+    #nextBtn { right: 10px; }
+  </style>
+</head>
+<body>
+  <!-- UI Buttons -->
+  <button id="prevBtn" class="ui-button">⬅</button>
+  <button id="nextBtn" class="ui-button">➡</button>
 
-      <!-- Camera for AR -->
-      <a-entity camera></a-entity>
-    </a-scene>
-  </body>
+  <!-- Debug Panel -->
+  <div id="debugPanel">Debug log:</div>
+
+  <!-- A-Frame Scene -->
+  <a-scene embedded arjs>
+    <!-- Assets -->
+    <a-assets>
+      <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
+      <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- Marker -->
+    <a-marker type="pattern" url="assets/marker.patt" id="carouselMarker">
+      <!-- Pizza -->
+      <a-entity id="pizzaEntity" visible="true">
+        <a-entity 
+          gltf-model="#pizzaModel" 
+          scale="0.5 0.5 0.5" 
+          position="0 0 0.1">
+        </a-entity>
+
+        <!-- Description text -->
+        <a-text 
+          value="Pepperoni Pizza\n$12.99" 
+          color="orange" 
+          align="center" 
+          position="0 0.8 0" 
+          width="2"
+          wrap-count="20">
+        </a-text>
+      </a-entity>
+
+      <!-- Burger -->
+      <a-entity id="burgerEntity" visible="false">
+        <a-entity 
+          gltf-model="#burgerModel" 
+          scale="0.5 0.5 0.5" 
+          position="0 0 0.1">
+        </a-entity>
+
+        <!-- Description text -->
+        <a-text 
+          value="Chicken Burger\n$9.99" 
+          color="yellow" 
+          align="center" 
+          position="0 0.8 0" 
+          width="2"
+          wrap-count="20">
+        </a-text>
+      </a-entity>
+    </a-marker>
+
+    <!-- Camera -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <!-- JavaScript -->
+  <script>
+    const modelIds = ['pizzaEntity', 'burgerEntity'];
+    let currentIndex = 0;
+
+    const debug = (msg) => {
+      const panel = document.getElementById('debugPanel');
+      const timestamp = new Date().toLocaleTimeString();
+      panel.innerHTML += `<br><strong>[${timestamp}]</strong> ${msg}`;
+      panel.scrollTop = panel.scrollHeight;
+    };
+
+    function showModel(index) {
+      modelIds.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.setAttribute('visible', i === index);
+      });
+      debug(`Model changed to index ${index} (${modelIds[index]})`);
+    }
+
+    function bindHtmlButtons() {
+      const next = document.getElementById('nextBtn');
+      const prev = document.getElementById('prevBtn');
+
+      next.addEventListener('click', () => {
+        currentIndex = (currentIndex + 1) % modelIds.length;
+        showModel(currentIndex);
+        debug('Next button clicked');
+      });
+
+      prev.addEventListener('click', () => {
+        currentIndex = (currentIndex - 1 + modelIds.length) % modelIds.length;
+        showModel(currentIndex);
+        debug('Previous button clicked');
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      bindHtmlButtons();
+
+      const marker = document.getElementById('carouselMarker');
+      if (marker) {
+        marker.addEventListener('markerFound', () => debug('Marker FOUND'));
+        marker.addEventListener('markerLost', () => debug('Marker LOST'));
+      }
+    });
+  </script>
+</body>
 </html>
