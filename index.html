@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AR Carousel with Dynamic Description & Controls</title>
+  <title>AR Carousel with Normalized Models</title>
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
   <style>
@@ -74,30 +74,39 @@
 
   <a-scene embedded arjs renderer="colorManagement: true; physicallyCorrectLights: true;">
     <a-assets>
-      <a-asset-item id="pizzaModel" src="assets/pizza.glb"></a-asset-item>
-      <a-asset-item id="burgerModel" src="assets/burger.glb"></a-asset-item>
+      <a-asset-item id="dish1" src="assets/dish1.glb"></a-asset-item>
+      <a-asset-item id="dish2" src="assets/dish2.glb"></a-asset-item>
+      <a-asset-item id="dish3" src="assets/dish3.glb"></a-asset-item>
+      <a-asset-item id="dish4" src="assets/dish4.glb"></a-asset-item>
+      <a-asset-item id="dish5" src="assets/dish5.glb"></a-asset-item>
     </a-assets>
 
     <a-marker type="pattern" url="assets/marker.patt" id="carouselMarker">
-      <a-entity id="pizzaEntity" gltf-model="#pizzaModel" scale="0.35 0.35 0.35" position="0 0 0.1" visible="true"></a-entity>
-      <a-entity id="burgerEntity" gltf-model="#burgerModel" scale="0.35 0.35 0.35" position="0 0 0.1" visible="false"></a-entity>
+      <a-entity id="dish1Entity" gltf-model="#dish1" position="0 0 0.1" visible="true"></a-entity>
+      <a-entity id="dish2Entity" gltf-model="#dish2" position="0 0 0.1" visible="false"></a-entity>
+      <a-entity id="dish3Entity" gltf-model="#dish3" position="0 0 0.1" visible="false"></a-entity>
+      <a-entity id="dish4Entity" gltf-model="#dish4" position="0 0 0.1" visible="false"></a-entity>
+      <a-entity id="dish5Entity" gltf-model="#dish5" position="0 0 0.1" visible="false"></a-entity>
     </a-marker>
 
     <a-entity camera></a-entity>
   </a-scene>
 
   <script>
-    const modelIds = ['pizzaEntity', 'burgerEntity'];
+    const modelIds = ['dish1Entity', 'dish2Entity', 'dish3Entity', 'dish4Entity', 'dish5Entity'];
     const descriptions = [
-      { title: "Pepperoni Pizza", price: "$12.99", details: "Classic pepperoni with mozzarella cheese and tomato sauce." },
-      { title: "Chicken Burger", price: "$9.99", details: "Juicy grilled chicken patty with fresh lettuce and mayo." }
+      { title: "Dish 1", price: "$10.99", details: "Description for dish 1." },
+      { title: "Dish 2", price: "$11.99", details: "Description for dish 2." },
+      { title: "Dish 3", price: "$12.99", details: "Description for dish 3." },
+      { title: "Dish 4", price: "$13.99", details: "Description for dish 4." },
+      { title: "Dish 5", price: "$14.99", details: "Description for dish 5." }
     ];
 
     let currentIndex = 0;
     let isDragging = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
-    let flipState = false; // To track flip for each model (could be expanded)
+    let flipState = false;
 
     const debug = (msg) => {
       const panel = document.getElementById('debugPanel');
@@ -122,6 +131,14 @@
       panel.innerHTML = `<strong>${info.title}</strong><br>${info.details}<br><em>Price: ${info.price}</em>`;
     }
 
+    function resetModelTransform() {
+      const model = document.getElementById(modelIds[currentIndex]);
+      if (model) {
+        model.setAttribute('rotation', {x:0, y:0, z:0});
+        flipState = false;
+      }
+    }
+
     function bindHtmlButtons() {
       const next = document.getElementById('nextBtn');
       const prev = document.getElementById('prevBtn');
@@ -141,30 +158,36 @@
       });
     }
 
-    // Reset rotation, scale, flip on model switch
-    function resetModelTransform() {
-      const model = document.getElementById(modelIds[currentIndex]);
-      if (model) {
-        model.setAttribute('rotation', {x:0, y:0, z:0});
-        model.setAttribute('scale', {x:0.35, y:0.35, z:0.35});
-        flipState = false;
-      }
+    function normalizeModelSize(model, targetSize = 1.5) {
+      const mesh = model.getObject3D('mesh');
+      if (!mesh) return;
+
+      const box = new THREE.Box3().setFromObject(mesh);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scaleFactor = targetSize / maxDim;
+
+      model.setAttribute('scale', {
+        x: scaleFactor,
+        y: scaleFactor,
+        z: scaleFactor
+      });
+
+      debug(`Normalized model: ${model.id} with scale factor: ${scaleFactor.toFixed(3)}`);
     }
 
     function addModelInteraction() {
       const scene = document.querySelector('a-scene');
       let model = document.getElementById(modelIds[currentIndex]);
-
       let rotationY = 0;
-      let scale = 0.35;
+      let scale = 1.5;
 
       function updateModelRef() {
         model = document.getElementById(modelIds[currentIndex]);
         rotationY = model.getAttribute('rotation').y || 0;
-        scale = model.getAttribute('scale').x || 0.35;
+        scale = model.getAttribute('scale').x || 1.5;
       }
 
-      // Pointer down: start drag
       scene.addEventListener('pointerdown', (e) => {
         isDragging = true;
         lastMouseX = e.clientX;
@@ -172,41 +195,32 @@
         updateModelRef();
       });
 
-      // Pointer move: rotate/zoom
       scene.addEventListener('pointermove', (e) => {
-        if (!isDragging) return;
-        if (!model) return;
-
+        if (!isDragging || !model) return;
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
 
-        // Horizontal drag = rotate Y axis
-        rotationY += dx * 0.5; // sensitivity
+        rotationY += dx * 0.5;
         model.setAttribute('rotation', {x:0, y:rotationY, z:0});
 
-        // Vertical drag = zoom (scale)
         scale += dy * -0.005;
-        scale = Math.min(Math.max(0.1, scale), 2); // clamp scale between 0.1 and 2
+        scale = Math.min(Math.max(0.1, scale), 2.5);
         model.setAttribute('scale', {x: scale, y: scale, z: scale});
 
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
       });
 
-      // Pointer up: stop drag
-      scene.addEventListener('pointerup', (e) => {
+      scene.addEventListener('pointerup', () => {
         isDragging = false;
       });
 
-      // Double click to flip model 180 degrees on Y axis
-      scene.addEventListener('dblclick', (e) => {
+      scene.addEventListener('dblclick', () => {
         model = document.getElementById(modelIds[currentIndex]);
         if (!model) return;
-
         rotationY = model.getAttribute('rotation').y || 0;
         flipState = !flipState;
-        rotationY += 180; // flip by 180deg
-
+        rotationY += 180;
         model.setAttribute('rotation', {x: 0, y: rotationY, z: 0});
         debug(`Model flipped ${flipState ? 'ON' : 'OFF'}`);
       });
@@ -214,6 +228,13 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       bindHtmlButtons();
+
+      modelIds.forEach(id => {
+        const entity = document.getElementById(id);
+        entity.addEventListener('model-loaded', () => {
+          normalizeModelSize(entity, 1.5);
+        });
+      });
 
       const marker = document.getElementById('carouselMarker');
       const infoPanel = document.getElementById('infoPanel');
