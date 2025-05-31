@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>AR Carousel with Normalized Models</title>
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
   <style>
-    body, html {
+    body,
+    html {
       margin: 0;
       overflow: hidden;
       font-family: Arial, sans-serif;
@@ -43,8 +45,13 @@
       user-select: none;
     }
 
-    #prevBtn { left: 10px; }
-    #nextBtn { right: 10px; }
+    #prevBtn {
+      left: 10px;
+    }
+
+    #nextBtn {
+      right: 10px;
+    }
 
     #infoPanel {
       position: fixed;
@@ -65,6 +72,7 @@
     }
   </style>
 </head>
+
 <body>
   <button id="prevBtn" class="ui-button">⬅</button>
   <button id="nextBtn" class="ui-button">➡</button>
@@ -134,7 +142,7 @@
     function resetModelTransform() {
       const model = document.getElementById(modelIds[currentIndex]);
       if (model) {
-        model.setAttribute('rotation', {x:0, y:0, z:0});
+        model.setAttribute('rotation', { x: 0, y: 0, z: 0 });
         flipState = false;
       }
     }
@@ -179,13 +187,14 @@
     function addModelInteraction() {
       const scene = document.querySelector('a-scene');
       let model = document.getElementById(modelIds[currentIndex]);
+      let rotationX = 0;
       let rotationY = 0;
-      let scale = 1.5;
 
       function updateModelRef() {
         model = document.getElementById(modelIds[currentIndex]);
-        rotationY = model.getAttribute('rotation').y || 0;
-        scale = model.getAttribute('scale').x || 1.5;
+        const rot = model.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
+        rotationX = rot.x;
+        rotationY = rot.y;
       }
 
       scene.addEventListener('pointerdown', (e) => {
@@ -197,15 +206,18 @@
 
       scene.addEventListener('pointermove', (e) => {
         if (!isDragging || !model) return;
+
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
 
-        rotationY += dx * 0.5;
-        model.setAttribute('rotation', {x:0, y:rotationY, z:0});
+        rotationY += dx * 0.5; // horizontal drag → rotate Y
+        rotationX -= dy * 0.5; // vertical drag → rotate X
 
-        scale += dy * -0.005;
-        scale = Math.min(Math.max(0.1, scale), 2.5);
-        model.setAttribute('scale', {x: scale, y: scale, z: scale});
+        model.setAttribute('rotation', {
+          x: rotationX,
+          y: rotationY,
+          z: 0
+        });
 
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
@@ -218,13 +230,17 @@
       scene.addEventListener('dblclick', () => {
         model = document.getElementById(modelIds[currentIndex]);
         if (!model) return;
-        rotationY = model.getAttribute('rotation').y || 0;
+        const currentRot = model.getAttribute('rotation') || { x: 0, y: 0, z: 0 };
         flipState = !flipState;
-        rotationY += 180;
-        model.setAttribute('rotation', {x: 0, y: rotationY, z: 0});
+        model.setAttribute('rotation', {
+          x: currentRot.x,
+          y: currentRot.y + 180,
+          z: currentRot.z
+        });
         debug(`Model flipped ${flipState ? 'ON' : 'OFF'}`);
       });
     }
+
 
     window.addEventListener('DOMContentLoaded', () => {
       bindHtmlButtons();
@@ -232,7 +248,7 @@
       modelIds.forEach(id => {
         const entity = document.getElementById(id);
         entity.addEventListener('model-loaded', () => {
-          normalizeModelSize(entity, 1.5);
+          normalizeModelSize(entity, 1);
         });
       });
 
@@ -256,4 +272,5 @@
     });
   </script>
 </body>
+
 </html>
