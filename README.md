@@ -1,20 +1,26 @@
-author:
-    name: Ashutosh Khedkar
-    link: https://ashutoshk-20.github.io/
-<br>
-title: AR Menu
-description: "An augmented reality web application that enhances the dining experience by displaying interactive 3D models of menu items."
-repository: https://github.com/ashutoshk-20/ar-menu
-link: https://ashutoshk-20.github.io/ar-menu/
-<br>
-image:
-    source: "@images/ar-menu-preview.png"
-    alt: "Screenshot of AR Menu interface displaying 3D food models"
-vedio:
-    source: "@images/ar-menu-implementation.mp4"
-    alt: "Vedio implementation of AR Menu interface displaying 3D food models"
-<br>
----
+- author:
+    - name: Ashutosh Khedkar
+    - link: https://ashutoshk-20.github.io/
+
+- title: AR Menu
+    - description: "An augmented reality web application that enhances the dining experience by displaying interactive 3D models of menu items."
+    - repository: https://github.com/ashutoshk-20/ar-menu
+    - link: https://ashutoshk-20.github.io/ar-menu/
+
+- image:
+    - source: "@images/ar-menu-preview.png"
+
+    - alt: "Screenshot of AR Menu interface displaying 3D food models"
+  
+![AR Menu Screenshot](./images/ar-menu-preview.png)
+
+- vedio:
+    - source: "@images/ar-menu-implementation.mp4"
+    - alt: "Vedio implementation of AR Menu interface displaying 3D food models"
+<video width="640" controls>
+  <source src="./images/ar-menu-implementation.mp4" type="video/mp4">
+</video>
+
 
 ## About AR Menu
 
