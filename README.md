@@ -36,8 +36,7 @@ TasteAR is an innovative web application that brings restaurant menus to life us
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/3DModel.git
-   cd 3DModel
+   https://github.com/ashutoshk-20/ar-menu.git
    ```
 
 2. Create and activate a virtual environment:
