@@ -1,0 +1,388 @@
+<!--
+Overview:
+- Purpose: AR view for displaying 3D food models using AR.js and A-Frame
+- Workflow:
+  1. Loads menu data from menu-data.js
+  2. Gets current item ID from localStorage
+  3. Loads corresponding 3D model
+  4. Displays model in AR when marker is detected
+  5. Handles model interactions (rotate, flip)
+  6. Shows food details in info panel
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Food Viewer</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+  <!-- Load menu data first -->
+  <script src="/static/menu-data.js"></script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    /* #debugPanel {
+      position: fixed;
+      bottom: 120px;
+      left: 0;
+      width: 100%;
+      max-height: 120px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 10px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      z-index: 999;
+    } */
+
+    #infoPanel {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 152, 0, 0.9);
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-size: 18px;
+      color: #111;
+      max-width: 300px;
+      text-align: center;
+      z-index: 1000;
+      user-select: none;
+      pointer-events: none;
+      display: none;
+    }
+
+    #backButton {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 10px 15px;
+      background: rgba(255, 152, 0, 0.9);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1000;
+      font-size: 16px;
+    }
+
+    #loadingIndicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 1001;
+      display: none;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #ff9800;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <button id="backButton" onclick="goBack()">← Back to Menu</button>
+  
+  <div id="loadingIndicator">
+    <div class="spinner"></div>
+    <p>Loading AR Model...</p>
+  </div>
+<!-- 
+  <div id="infoPanel"></div>
+  <div id="debugPanel">Debug log:</div> -->
+
+  <a-scene embedded arjs renderer="colorManagement: true; physicallyCorrectLights: true;" vr-mode-ui="enabled: false">
+    <a-assets>
+      <a-asset-item id="currentModel" src="/static/models/dish1.glb"></a-asset-item>
+    </a-assets>
+
+    <a-marker type="pattern" url="/static/assets/marker.patt" id="arMarker">
+      <a-entity id="foodModel" 
+                gltf-model="#currentModel" 
+                position="0 0 0.1" 
+                visible="true"
+                animation-mixer>
+      </a-entity>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+  <script>
+    // Check if menuData is loaded
+    if (typeof menuData === 'undefined') {
+      console.error('Menu data not loaded! Make sure menu-data.js is properly included.');
+    }
+
+    // Find food item by ID using the imported menuData
+    function findFoodItem(idToFind) {
+      const numericalId = parseInt(idToFind, 10);
+      if (isNaN(numericalId)) {
+        // debug('Invalid ID provided: ' + idToFind);
+        return null;
+      }
+
+      // Check if menuData is available
+      if (typeof menuData === 'undefined') {
+        // debug('Menu data not available');
+        return null;
+      }
+
+      for (const category in menuData) {
+        const item = menuData[category].find(item => item.id === numericalId);
+        if (item) {
+          // debug(`Found item in category '${category}': ${item.name}`);
+          return item;
+        }
+      }
+      
+      debug(`Item with ID ${numericalId} not found in any category`);
+      return null;
+    }
+
+    // Global variables
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let currentItem = null;
+    let rotationX = 0;
+    let rotationY = 0;
+
+    // const debug = (msg) => {
+    //   const panel = document.getElementById('debugPanel');
+    //   const timestamp = new Date().toLocaleTimeString();
+    //   panel.innerHTML += `<br><strong>[${timestamp}]</strong> ${msg}`;
+    //   panel.scrollTop = panel.scrollHeight;
+    //   console.log(msg);
+    // };
+
+    function showLoadingIndicator(show) {
+      const indicator = document.getElementById('loadingIndicator');
+      indicator.style.display = show ? 'block' : 'none';
+    }
+
+    function updateInfoPanel(item) {
+      if (!item) return;
+      
+      const panel = document.getElementById('infoPanel');
+      panel.innerHTML = `
+        <strong>${item.name}</strong><br>
+        <em>Price: ${item.price}</em><br>
+        <small>Drag to rotate • Double-tap to flip</small>
+      `;
+    }
+
+    function normalizeModelSize(model, targetSize = 1) {
+      const mesh = model.getObject3D('mesh');
+      if (!mesh) {
+        // debug('No mesh found for normalization');
+        return;
+      }
+
+      const box = new THREE.Box3().setFromObject(mesh);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scaleFactor = targetSize / maxDim;
+
+      model.setAttribute('scale', {
+        x: scaleFactor,
+        y: scaleFactor,
+        z: scaleFactor
+      });
+
+      // debug(`Model normalized with scale factor: ${scaleFactor.toFixed(3)}`);
+    }
+
+    function loadModel(modelPath) {
+      showLoadingIndicator(true);
+      // debug(`Loading model: ${modelPath}`);
+      
+      const assetItem = document.getElementById('currentModel');
+      const modelEntity = document.getElementById('foodModel');
+      
+      // Update the asset source
+      assetItem.setAttribute('src', `/static/${modelPath}`);
+      
+      // Reset model transform
+      modelEntity.setAttribute('rotation', { x: 0, y: 0, z: 0 });
+      rotationX = 0;
+      rotationY = 0;
+      
+      // The model will be loaded automatically due to the asset reference
+    }
+
+    function addModelInteraction() {
+      const scene = document.querySelector('a-scene');
+      
+      scene.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        // debug('Pointer down - starting drag');
+      });
+
+      scene.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+
+        rotationY += dx * 0.5;
+        rotationX -= dy * 0.5;
+
+        const model = document.getElementById('foodModel');
+        if (model) {
+          model.setAttribute('rotation', {
+            x: rotationX,
+            y: rotationY,
+            z: 0
+          });
+        }
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+      });
+
+      scene.addEventListener('pointerup', () => {
+        isDragging = false;
+        debug('Pointer up - ending drag');
+      });
+
+      scene.addEventListener('dblclick', () => {
+        const model = document.getElementById('foodModel');
+        if (model) {
+          rotationY += 180;
+          model.setAttribute('rotation', {
+            x: rotationX,
+            y: rotationY,
+            z: 0
+          });
+          // debug('Model flipped 180 degrees');
+        }
+      });
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+
+    // Wait for menu data to be loaded before initializing
+    function initializeApp() {
+      // debug('Initializing AR Food Viewer');
+      
+      // Get the item ID from localStorage
+      const itemId = localStorage.getItem('currentArItemId');
+      // debug('Item ID from localStorage: ' + itemId);
+      
+      if (itemId) {
+        currentItem = findFoodItem(parseInt(itemId, 10));
+        if (currentItem && currentItem.modelPath) {
+          // debug(`Found item: ${currentItem.name} with model: ${currentItem.modelPath}`);
+          loadModel(currentItem.modelPath);
+          // Clear the stored ID after use
+          localStorage.removeItem('currentArItemId');
+        } else {
+          // debug('Item not found or no model path available');
+          showLoadingIndicator(false);
+        }
+      } else {
+        // debug('No item ID found, using default model');
+        currentItem = { name: "Default Item", price: "₹299" };
+        showLoadingIndicator(false);
+      }
+
+      // Set up model loading events
+      const modelEntity = document.getElementById('foodModel');
+      
+      modelEntity.addEventListener('model-loaded', () => {
+        // debug('Model loaded successfully');
+        normalizeModelSize(modelEntity, 1);
+        showLoadingIndicator(false);
+      });
+
+      modelEntity.addEventListener('model-error', (e) => {
+        // debug('Model loading error: ' + e.detail);
+        showLoadingIndicator(false);
+      });
+
+      // Set up marker events
+      const marker = document.getElementById('arMarker');
+      const infoPanel = document.getElementById('infoPanel');
+
+      marker.addEventListener('markerFound', () => {
+        // debug('Marker FOUND');
+        infoPanel.style.display = 'block';
+        if (currentItem) {
+          updateInfoPanel(currentItem);
+        }
+      });
+
+      marker.addEventListener('markerLost', () => {
+        // debug('Marker LOST');
+        infoPanel.style.display = 'none';
+      });
+
+      // Add model interaction
+      addModelInteraction();
+      
+      // debug('AR Scene initialized successfully');
+    }
+
+    // Initialize when DOM is loaded and menu data is available
+    window.addEventListener('DOMContentLoaded', () => {
+      // debug('DOM Content Loaded');
+      
+      // Check if menuData is already loaded
+      if (typeof menuData !== 'undefined') {
+        // debug('Menu data is available, initializing app');
+        initializeApp();
+      } else {
+        // debug('Menu data not yet loaded, waiting...');
+        // Wait a bit for the script to load
+        setTimeout(() => {
+          if (typeof menuData !== 'undefined') {
+            // debug('Menu data loaded after delay, initializing app');
+            initializeApp();
+          } else {
+            // debug('ERROR: Menu data failed to load');
+            showLoadingIndicator(false);
+            // Show error message
+            const panel = document.getElementById('infoPanel');
+            panel.innerHTML = 'Error: Unable to load menu data';
+            panel.style.display = 'block';
+            panel.style.background = 'rgba(255, 0, 0, 0.9)';
+          }
+        }, 500);
+      }
+    });
+  </script>
+</body>
+
+</html>

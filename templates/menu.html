@@ -1,0 +1,332 @@
+<!--
+Overview:
+- Purpose: Main menu interface for browsing food items
+- Workflow:
+  1. Displays food items by category
+  2. Shows 3D model previews using model-viewer
+  3. Handles food item selection and detail view
+  4. Manages AR view transitions
+  5. Provides category navigation and settings
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - TasteAR</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <!-- Custom Scripts -->
+    <script src="{{ url_for('static', filename='menu-data.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='menu-script.js') }}" defer></script>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.min.js"></script>
+    <style>
+        .food-3d-viewer {
+            width: 100%;
+            height: 50vh;
+            background: #f5f5f5;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative; /* Added for absolute positioning of loading */
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            --poster-color: transparent;
+        }
+
+        .loading-3d {
+            position: absolute; /* Position loading absolute within viewer */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5; /* Match viewer background */
+            color: #666;
+            z-index: 1; /* Ensure it's above the model */
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .loading-3d i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .loading-3d.hidden {
+            opacity: 0;
+            pointer-events: none; /* Prevent interaction when hidden */
+        }
+
+        /* Styles for Modal Navigation Buttons */
+        .modal-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 15px 10px;
+            cursor: pointer;
+            z-index: 10;
+            font-size: 24px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-nav-btn:hover {
+            opacity: 1;
+        }
+
+        .modal-nav-btn.prev {
+            left: 10px;
+            border-radius: 5px; /* Rounded corners */
+        }
+
+        .modal-nav-btn.next {
+            right: 10px;
+            border-radius: 5px; /* Rounded corners */
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <!-- Header -->
+        <header class="menu-header">
+            <button class="back-btn" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="logo">
+                <i class="fas fa-utensils"></i>
+                <span>TasteAR Menu</span>
+            </div>
+            <div class="header-buttons"> 
+                <button class="help-btn" onclick="openHelp()">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+                <button class="settings-btn" onclick="openSettings()">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Menu Content -->
+        <div class="menu-content">
+            <div class="category-selection-bar">
+                <h2 id="currentCategory">Best Sellers</h2>
+                <button class="category-toggle-btn" onclick="toggleCategoryPanel()">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+
+            <!-- Floating category panel outside normal flow -->
+            <div class="category-panel-overlay" id="categoryPanel">
+                <div class="category-item active" data-category="bestsellers"><i class="fas fa-star"></i><span>Best Sellers</span></div>
+                <div class="category-item" data-category="pizza"><i class="fas fa-pizza-slice"></i><span>Pizza</span></div>
+                <div class="category-item" data-category="burgers"><i class="fas fa-hamburger"></i><span>Burgers</span></div>
+                <div class="category-item" data-category="beverages"><i class="fas fa-coffee"></i><span>Beverages</span></div>
+                <div class="category-item" data-category="desserts"><i class="fas fa-ice-cream"></i><span>Desserts</span></div>
+            </div>
+            <div class="menu-grid" id="menuGrid">
+                <!-- Food cards will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Food Item Detail Modal -->
+        <div id="foodDetailModal" class="food-modal">
+            <div class="food-modal-content">
+                <div class="food-modal-header">
+                    <h2 id="foodDetailName"></h2>
+                    <span class="close" onclick="closeFoodDetail()">&times;</span>
+                </div>
+                <div class="food-modal-body">
+                    <div class="food-3d-container">
+                        <div id="food3D" class="food-3d-viewer">
+                            <model-viewer id="foodModel"
+                            camera-controls
+                            interaction-prompt="none"
+                            loading="eager"
+                            auto-rotate
+                            auto-rotate-delay="0"
+                            rotation-per-second="30deg">
+                                <!-- Loading indicator inside model-viewer -->
+                                <div class="loading-3d">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Loading 3D Model...</p>
+                                </div>
+                            </model-viewer>
+                        </div>
+                        <button class="ar-view-btn" onclick="window.location.href='/fullar'">
+                            <i class="fas fa-cube"></i>
+                            View in AR
+                        </button>
+                    </div>
+                    <div class="food-info-container">
+                        <div class="food-info">
+                            <div class="food-badges">
+                                <span id="foodType" class="food-badge"></span>
+                                <span id="foodPrice" class="price-badge"></span>
+                            </div>
+                            <div class="food-description">
+                                <h3>Description</h3>
+                                <p id="foodDescription"></p>
+                            </div>
+                            <div class="food-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-users"></i>
+                                    <span>Serves: <strong id="foodServes"></strong></span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-fire"></i>
+                                    <span>Calories: <strong id="foodCalories"></strong></span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Prep Time: <strong id="foodPrepTime"></strong></span>
+                                </div>
+                            </div>
+                            <div class="ingredients">
+                                <h3>Main Ingredients</h3>
+                                <div id="foodIngredients" class="ingredients-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <!-- Carousel Navigation Buttons -->
+             <button class="modal-nav-btn prev" onclick="navigatePreviousItem()"><i class="fas fa-chevron-left"></i></button>
+             <button class="modal-nav-btn next" onclick="navigateNextItem()"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <span class="close" onclick="closeSettings()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="setting-item">
+                        <label>Price Range</label>
+                        <div class="price-range">
+                            <div class="price-slider">
+                                <input type="range" id="priceMin" min="0" max="2000" step="50" value="0">
+                                <input type="range" id="priceMax" min="0" max="2000" step="50" value="2000">
+                            </div>
+                            <div class="price-values">
+                                <span id="priceMinValue">₹0</span> - <span id="priceMaxValue">₹2000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>Sort By</label>
+                        <select id="sortOrder">
+                            <option value="default">Default</option>
+                            <option value="low-to-high">Price: Low to High</option>
+                            <option value="high-to-low">Price: High to Low</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Dietary Preferences</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="vegetarian"> Vegetarian</label>
+                            <label><input type="checkbox" value="vegan"> Vegan</label>
+                            <label><input type="checkbox" value="gluten-free"> Gluten Free</label>
+                            <label><input type="checkbox" value="contains-dairy"> Contains Dairy</label>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>Language</label>
+                        <select id="language">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="apply-btn" onclick="applySettings()">Apply Changes</button>
+                    <button class="reset-btn" onclick="resetSettings()">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AR View Modal (Modified - NO Camera initialization here) -->
+    <div id="arViewModal" class="food-modal" style="display: none;">
+        <div class="food-modal-content">
+            <div class="food-modal-header">
+                <h2 id="arModelName">AR View</h2>
+                <span class="close" onclick="closeARView()">&times;</span>
+            </div>
+            <div class="food-modal-body" style="height: calc(100vh - 120px); padding: 0;">
+                <!-- AR Scene will be created dynamically when needed -->
+                <div id="arSceneContainer" style="width: 100%; height: 100%; background: #000;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center;">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>Initializing AR Camera...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modelViewer = document.getElementById('foodModel');
+        const loadingDiv = modelViewer.querySelector('.loading-3d');
+        let arScene = null;
+        let cameraStream = null;
+
+        modelViewer.addEventListener('load', () => {
+            console.log('3D model loaded!');
+            loadingDiv.classList.add('hidden');
+        });
+
+        modelViewer.addEventListener('error', () => {
+             console.error('Error loading 3D model.');
+             loadingDiv.classList.add('hidden');
+        });
+
+        modelViewer.addEventListener('src-change', () => {
+            console.log('Model source changing...');
+            loadingDiv.classList.remove('hidden');
+        });
+
+        function toggleCategoryPanel() {
+            const panel = document.getElementById('categoryPanel');
+            panel.classList.toggle('show');
+        }
+
+        function openHelp() {
+            alert("This is where the help modal or FAQ would go.");
+        }
+
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.getElementById('categoryPanel').classList.remove('show');
+            });
+        });
+
+        // Modified openARView function to properly initialize camera only when needed
+        
+    </script>
+</body>
+</html>

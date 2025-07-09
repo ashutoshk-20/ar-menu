@@ -1,0 +1,130 @@
+<!--
+Overview:
+- Purpose: Landing page for the TasteAR application
+- Workflow:
+  1. Displays welcome message and app introduction
+  2. Provides main navigation to menu and settings
+  3. Shows restaurant information
+  4. Handles initial user interaction
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TasteAR - Restaurant Menu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <span class="logo-text">GoodLuck</span>
+            </div>
+            <button class="settings-btn" onclick="openSettings()">
+                <i class="fas fa-cog"></i>
+            </button>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Experience Dining<br><span class="accent-text">in Augmented Reality</span></h1>
+                <p>Welcome to the future of restaurant menus. See your food before you order with our innovative AR technology.</p>
+                
+                <!-- Main Action Buttons -->
+                <div class="main-actions">
+                    <button class="action-btn primary-btn" onclick="openMenu()">
+                        <div class="btn-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div class="btn-content">
+                            <span class="btn-title">View Menu</span>
+                            <span class="btn-subtitle">Explore our dishes in AR</span>
+                        </div>
+                    </button>
+                    
+                    <button class="action-btn secondary-btn" onclick="openSettings()">
+                        <div class="btn-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="btn-content">
+                            <span class="btn-title">Settings</span>
+                            <span class="btn-subtitle">Customize your experience</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Restaurant Info -->
+        <section class="restaurant-info">
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Opening Hours</h3>
+                        <p>Mon-Sun: 11:00 AM - 11:00 PM</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Contact</h3>
+                        <p>+1 (555) 123-4567</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <span class="close" onclick="closeSettings()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="setting-item">
+                    <label>Language</label>
+                    <select>
+                        <option>English</option>
+                        <option>Spanish</option>
+                        <option>French</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Dietary Preferences</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox"> Vegetarian</label>
+                        <label><input type="checkbox"> Vegan</label>
+                        <label><input type="checkbox"> Gluten-Free</label>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>AR Quality</label>
+                    <select>
+                        <option>High</option>
+                        <option>Medium</option>
+                        <option>Low</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
