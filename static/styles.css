@@ -972,7 +972,13 @@ select:focus {
 
 
 .menu-container {
-  position: relative; /* anchor for absolute overlay */
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--white);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* anchor for absolute overlay */
 }
 
 .help-btn {
